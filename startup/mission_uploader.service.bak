@@ -1,0 +1,13 @@
+[Unit]
+Description=Mission Uploader Service
+After=network.target
+
+[Service]
+Type=simple
+User=<your_username>
+WorkingDirectory=/path/to/your/bot/directory
+ExecStart=/usr/bin/python3 /path/to/your/bot/script.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
