@@ -2,7 +2,7 @@ import discord
 import os
 import json
 import logging
-from ftplib import FTP_TLS
+import ftplib
 
 # Set up logging
 logging.basicConfig(filename='bot.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
@@ -44,6 +44,17 @@ async def on_message(message):
     except Exception as e:
         logging.error(f"Error processing message: {e}")
 
+
+
+#class MyFTP_TLS(ftplib.FTP_TLS): #class for FTP_TLS (session based)| Do not forget prot_c when using this
+    #"""Explicit FTPS, with shared TLS session"""
+#   def ntransfercmd(self, cmd, rest=None):
+#        conn, size = ftplib.FTP.ntransfercmd(self, cmd, rest)
+#        if self._prot_p:
+#            conn = self.context.wrap_socket(conn,
+#                                            server_hostname=self.host,
+#                                            session=self.sock.session)  # this is the fix
+#        return conn, size
 async def download_attachment(attachment):
     try:
         download_location = os.path.join(config["DOWNLOAD_PATH"], attachment.filename)
@@ -57,11 +68,10 @@ def upload_to_ftp(file_path):
     try:
         filename = os.path.basename(file_path)
 
-        ftps = FTP_TLS()
-        ftps.set_debuglevel(2)
+        ftps =  ftplib.FTP()
+        ftps.set_debuglevel(0) #2 for full debug
         ftps.connect(config["FTP_HOST"], int(config["FTP_PORT"]))  # Connect with host and port
         ftps.login(config["FTP_USER"], config["FTP_PASS"])
-        ftps.prot_p()
         ftps.cwd(config["FTP_DIRECTORY"])
 
         # Check if the file already exists on the server
