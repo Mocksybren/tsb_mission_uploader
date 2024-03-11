@@ -12,8 +12,10 @@ ftps = ftplib.FTP_TLS()
         ftps.prot_c() #<------- Important to gain secure connection
         ftps.cwd(config["FTP_DIRECTORY"])
 ```
-If you are receiving error: _ssl.c:2685 | de-comment MyFTP_TLS class to maintain initial connection to FTP when reaching the server
-If you are receiving error: _ssl.c:1000 | Change from secure FTP to insecure FTP (FTP_TLS --> FTP)
+If you are receiving error: _ssl.c:2685 
+```de-comment MyFTP_TLS class to maintain initial connection to FTP when reaching the server```
+If you are receiving error: _ssl.c:1000  
+```Change from secure FTP to insecure FTP (FTP_TLS --> FTP)```
 
 # logs 
 Logs are spread out over 3 log files
