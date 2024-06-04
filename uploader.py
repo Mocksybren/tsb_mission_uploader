@@ -1,3 +1,4 @@
+import datetime
 import discord
 import os
 import json
@@ -64,12 +65,15 @@ async def on_message(message):
                     downloaded_file = await download_attachment(attachment)
                     upload_to_ftp(downloaded_file)
                     if not dupeflag:
-                        await message.add_reaction('✅')     # React with a checkmark for PBO files
+                        await message.add_reaction('✅')  # React with a checkmark for PBO files
+                        # ☑️
                     elif dupeflag:
                         await message.add_reaction('♻')     # React with a recycle mark for duplicates
                 else:
                     botlogger.info(f"Skipped non-PBO file: {attachment.filename}")
                     await message.add_reaction('❌')  # React with a red X for non-PBO files
+        elif "!indexM" in message.content: # Invoke indexing when reading !indexM
+            await index_mission_files(message)
     except Exception as e:
         errorlog.error(f"Error processing message: {e}")
 
@@ -132,6 +136,58 @@ def upload_to_ftp(file_path):
     except Exception as e:
         errorlog.error(f"Error in upload_to_ftp: {e}")
 
+
+async def index_mission_files(message):
+    i = 0
+    mb_size_collection = 0
+    mb_deleted = 0
+    mission_to_delete_list = ()
+    try:
+        current_date = datetime.date.today() - datetime.timedelta(30) # Get date of index_mission_files invoked and go back 30 days
+        formatted_date = current_date.strftime("%Y%d%m") # Format to easy comparison
+        botlogger.info("Starting Index of mission Files")
+
+        ftps = ftplib.FTP()
+        ftps.set_debuglevel(0)  # 2 for full debug
+        ftps.connect(config["FTP_HOST"], int(config["FTP_PORT"]))  # Connect with host and port
+        ftps.login(config["FTP_USER"], config["FTP_PASS"])
+        ftps.cwd(config["FTP_DIRECTORY"])
+        ls = ftps.mlsd()    # List files in directory
+
+        for entry in ls:
+            if entry[0].lower().startswith('msn') & entry[0].lower().endswith('.pbo'): # if starts with msn and ends with .pbo
+                i = i+1
+                ymd = entry[1].get('modify')[:8] # Get first 8 numbers for date from last modified.
+                size = int(entry[1].get('size'))    # Get Size of file
+                mb_size = str(round((size/1000/1000), 3))   # Transfer it to Mb
+                mb_size_collection = mb_size_collection + float(mb_size)    # Add to total Mb count
+                if ymd < formatted_date and ymd != 0:   # Check if file is older then 30 days
+                    mission_to_delete_list += (entry[0],)   # Add file name to to delete list
+                    mb_deleted += float(mb_size)    # Save how much Mb it will save
+
+        if message.content == "!indexM" and i != 0: # Only index of files in directory
+            await message.channel.send(f'{i} Indexed with total amount: {mb_size_collection} Mb ')
+            await message.channel.send(f'{len(mission_to_delete_list)} are 30 days or older')
+            ftps.quit()  # Close Connection
+        elif message.content == "!indexMremove" and len(mission_to_delete_list) != 0:   # Index and Delete files older then 30 days
+            await message.channel.send(f'Removing {len(mission_to_delete_list)} files of size amount {mb_deleted} Mb')
+            await remove_mission_files(mission_to_delete_list, ftps)    # Invoke remove_mission_files with existing ftp connection made in Index
+        else:
+            await message.channel.send(f'No missions found')    # No MSN files detected
+            ftps.quit()  # Close Connection
+
+    except Exception as e:
+        errorlog.error(f"Error in index_mission_files: {e}")
+
+
+async def remove_mission_files(mission_to_delete_list, ftps):
+    try:
+        for item in mission_to_delete_list:
+            ftps.delete(item)   # Delete files from ftp server from mission_to_delete_list
+        ftps.quit() # Close connection
+
+    except Exception as e:
+        errorlog.error(f"Error in remove_mission_files: {e}")
 
 try:
     client.run(config["TOKEN"])
