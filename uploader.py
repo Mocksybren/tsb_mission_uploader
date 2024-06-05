@@ -5,7 +5,6 @@ import json
 import logging
 import ftplib
 
-
 formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')      # Default format
 dupeflag = bool
 # setup for multiple loggers
@@ -144,7 +143,6 @@ async def index_mission_files(message):
     mission_to_delete_list = ()
     try:
         current_date = datetime.date.today() - datetime.timedelta(30) # Get date of index_mission_files invoked and go back 30 days
-        formatted_date = current_date.strftime("%Y%d%m") # Format to easy comparison
         botlogger.info("Starting Index of mission Files")
 
         ftps = ftplib.FTP()
@@ -152,18 +150,38 @@ async def index_mission_files(message):
         ftps.connect(config["FTP_HOST"], int(config["FTP_PORT"]))  # Connect with host and port
         ftps.login(config["FTP_USER"], config["FTP_PASS"])
         ftps.cwd(config["FTP_DIRECTORY"])
-        ls = ftps.mlsd()    # List files in directory
 
-        for entry in ls:
-            if entry[0].lower().startswith('msn') & entry[0].lower().endswith('.pbo'): # if starts with msn and ends with .pbo
-                i = i+1
-                ymd = entry[1].get('modify')[:8] # Get first 8 numbers for date from last modified.
-                size = int(entry[1].get('size'))    # Get Size of file
-                mb_size = str(round((size/1000/1000), 3))   # Transfer it to Mb
-                mb_size_collection = mb_size_collection + float(mb_size)    # Add to total Mb count
-                if ymd < formatted_date and ymd != 0:   # Check if file is older then 30 days
-                    mission_to_delete_list += (entry[0],)   # Add file name to to delete list
-                    mb_deleted += float(mb_size)    # Save how much Mb it will save
+        if config["FTP_MODERN"] == 1:
+            ls = ftps.mlsd()    # List files in directory
+            formatted_date = current_date.strftime("%Y%m%d")  # Format to easy comparison
+
+            for entry in ls:
+                if entry[0].lower().startswith('msn') & entry[0].lower().endswith('.pbo'): # if starts with msn and ends with .pbo
+                    i = i+1
+                    ymd = entry[1].get('modify')[:8] # Get first 8 numbers for date from last modified.
+                    size = int(entry[1].get('size'))    # Get Size of file
+                    mb_size = str(round((size/1000/1000), 3))   # Transfer it to Mb
+                    mb_size_collection = mb_size_collection + float(mb_size)    # Add to total Mb count
+                    if ymd < formatted_date and ymd != 0:   # Check if file is older then 30 days
+                        mission_to_delete_list += (entry[0],)   # Add file name to to delete list
+                        mb_deleted += float(mb_size)    # Save how much Mb it will save
+
+        elif config["FTP_MODERN"] == 0:
+            ls = ftps.nlst()
+            formatted_date = current_date.strftime("%Y%m%d")
+
+            for entry in ls:
+                Mfile = ftps.voidcmd(f"MDTM {entry}")
+                if entry.lower().startswith("msn") & entry.lower().endswith(".pbo"): # if starts with msn and ends with .pbo
+                    i = i+1
+                    print(entry)
+                    ymd = Mfile[4:12] # Get first 8 numbers for date from last modified.
+                    size = int(ftps.size(entry))    # Get Size of file
+                    mb_size = str(round((size/1000/1000), 3))   # Transfer it to Mb
+                    mb_size_collection = mb_size_collection + float(mb_size)    # Add to total Mb count
+                    if ymd < formatted_date and ymd != 0:   # Check if file is older then 30 days
+                        mission_to_delete_list += (entry,)   # Add file name to to delete list
+                        mb_deleted += float(mb_size)    # Save how much Mb it will save
 
         if message.content == "!indexM" and i != 0: # Only index of files in directory
             await message.channel.send(f'{i} Indexed with total amount: {mb_size_collection} Mb ')
