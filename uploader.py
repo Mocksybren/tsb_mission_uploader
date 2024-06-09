@@ -57,7 +57,6 @@ async def on_ready():
 async def on_message(message):
     global dupeflag
     try:
-        print(message.author.roles)
         if message.channel.id == config["CHANNEL_ID"] and message.attachments:
             for attachment in message.attachments:
                 # Check if the file is a .PBO file
@@ -191,6 +190,7 @@ async def index_mission_files(message):
                         mb_deleted += float(mb_size)    # Save how much Mb it will save
             txtfile.close()
         if message.content == "!indexM" and i != 0: # Only index of files in directory
+            await message.delete()
             eme = discord.Embed(description=f"Bot has been called to index Mission files", color=0x03d692, title=" ")
             eme.set_author(name="Index Mission Command Issued")
             eme.set_footer(text=f"{message.author} has issued the command")
@@ -202,6 +202,7 @@ async def index_mission_files(message):
             await message.channel.send(embed=eme)
             ftps.quit()  # Close Connection
         elif message.content == "!indexMremove" and len(mission_to_delete_list) != 0:   # Index and Delete files older then 30 days
+            await message.delete()
             await remove_mission_files(mission_to_delete_list, ftps)  # Invoke remove_mission_files with existing ftp connection made in Index
             eme = discord.Embed(description=f"Bot has been called to remove old Mission files", color=0xcc0000, title=" ")
             eme.set_author(name="Remove 30 day+ old Missions Command Issued")
