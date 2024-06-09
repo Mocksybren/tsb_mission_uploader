@@ -7,5 +7,6 @@
     "FTP_USER": "your_ftp_username",
     "FTP_PASS": "your_ftp_password",
     "FTP_DIRECTORY": "your_ftp_directory_here"
+    "ROLES": "your_roles_here"
     "FTP_MODERN": 0
 }
