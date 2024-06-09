@@ -57,6 +57,7 @@ async def on_ready():
 async def on_message(message):
     global dupeflag
     try:
+        print(message.author.roles)
         if message.channel.id == config["CHANNEL_ID"] and message.attachments:
             for attachment in message.attachments:
                 # Check if the file is a .PBO file
@@ -71,7 +72,8 @@ async def on_message(message):
                 else:
                     botlogger.info(f"Skipped non-PBO file: {attachment.filename}")
                     await message.add_reaction('❌')  # React with a red X for non-PBO files
-        elif "!indexM" in message.content and message.author.roles == config["ROLES"]: # Invoke indexing when reading !indexM
+        elif "!indexM" in message.content and any(
+                role.name in config["ROLES"] for role in message.author.roles): # Invoke indexing when reading !indexM
             await index_mission_files(message)
     except Exception as e:
         errorlog.error(f"Error processing message: {e}")
