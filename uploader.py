@@ -71,7 +71,7 @@ async def on_message(message):
                 else:
                     botlogger.info(f"Skipped non-PBO file: {attachment.filename}")
                     await message.add_reaction('❌')  # React with a red X for non-PBO files
-        elif "!indexM" in message.content: # Invoke indexing when reading !indexM
+        elif "!indexM" in message.content and message.author.roles == config["ROLES"]: # Invoke indexing when reading !indexM
             await index_mission_files(message)
     except Exception as e:
         errorlog.error(f"Error processing message: {e}")
@@ -137,6 +137,7 @@ def upload_to_ftp(file_path):
 
 
 async def index_mission_files(message):
+    txtfile = open(f'Deleted_Files.txt', 'w')
     i = 0
     mb_size_collection = 0
     mb_deleted = 0
@@ -160,11 +161,14 @@ async def index_mission_files(message):
                     i = i+1
                     ymd = entry[1].get('modify')[:8] # Get first 8 numbers for date from last modified.
                     size = int(entry[1].get('size'))    # Get Size of file
-                    mb_size = str(round((size/1000/1000), 3))   # Transfer it to Mb
+                    mb_size = str(round((size/1000/1000), 1))   # Transfer it to Mb
                     mb_size_collection = mb_size_collection + float(mb_size)    # Add to total Mb count
                     if ymd < formatted_date and ymd != 0:   # Check if file is older then 30 days
                         mission_to_delete_list += (entry[0],)   # Add file name to to delete list
+                        txtfile.write(entry[0])
+                        txtfile.write("\n")
                         mb_deleted += float(mb_size)    # Save how much Mb it will save
+            txtfile.close()
 
         elif config["FTP_MODERN"] == 0:
             ls = ftps.nlst()
@@ -174,22 +178,37 @@ async def index_mission_files(message):
                 Mfile = ftps.voidcmd(f"MDTM {entry}")
                 if entry.lower().startswith("msn") & entry.lower().endswith(".pbo"): # if starts with msn and ends with .pbo
                     i = i+1
-                    print(entry)
                     ymd = Mfile[4:12] # Get first 8 numbers for date from last modified.
                     size = int(ftps.size(entry))    # Get Size of file
-                    mb_size = str(round((size/1000/1000), 3))   # Transfer it to Mb
+                    mb_size = str(round((size/1000/1000), 1))   # Transfer it to Mb
                     mb_size_collection = mb_size_collection + float(mb_size)    # Add to total Mb count
                     if ymd < formatted_date and ymd != 0:   # Check if file is older then 30 days
                         mission_to_delete_list += (entry,)   # Add file name to to delete list
+                        txtfile.write(entry)
+                        txtfile.write("\n")
                         mb_deleted += float(mb_size)    # Save how much Mb it will save
-
+            txtfile.close()
         if message.content == "!indexM" and i != 0: # Only index of files in directory
-            await message.channel.send(f'{i} Indexed with total amount: {mb_size_collection} Mb ')
-            await message.channel.send(f'{len(mission_to_delete_list)} are 30 days or older')
+            eme = discord.Embed(description=f"Bot has been called to index Mission files", color=0x03d692, title=" ")
+            eme.set_author(name="Index Mission Command Issued")
+            eme.set_footer(text=f"{message.author} has issued the command")
+            eme.timestamp = message.created_at
+            eme.add_field(name="Information:",
+                          value=f"Amount of files found: {i}"'\n'
+                                f"Size of all files: {mb_size_collection} Mb"'\n'
+                                f"{len(mission_to_delete_list)} are 30 days or older", inline=False)
+            await message.channel.send(embed=eme)
             ftps.quit()  # Close Connection
         elif message.content == "!indexMremove" and len(mission_to_delete_list) != 0:   # Index and Delete files older then 30 days
-            await message.channel.send(f'Removing {len(mission_to_delete_list)} files of size amount {mb_deleted} Mb')
-            await remove_mission_files(mission_to_delete_list, ftps)    # Invoke remove_mission_files with existing ftp connection made in Index
+            await remove_mission_files(mission_to_delete_list, ftps)  # Invoke remove_mission_files with existing ftp connection made in Index
+            eme = discord.Embed(description=f"Bot has been called to remove old Mission files", color=0xcc0000, title=" ")
+            eme.set_author(name="Remove 30 day+ old Missions Command Issued")
+            eme.set_footer(text=f"{message.author} has issued the command")
+            eme.timestamp = message.created_at
+            eme.add_field(name="Information:",
+                          value=f"Amount of files deleted found: {len(mission_to_delete_list)}"'\n'
+                                f"Size of all files deleted: {mb_deleted} Mb", inline=False)
+            await message.channel.send(embed=eme,file=discord.File(r"Deleted_Files.txt"))
         else:
             await message.channel.send(f'No missions found')    # No MSN files detected
             ftps.quit()  # Close Connection
@@ -199,6 +218,7 @@ async def index_mission_files(message):
 
 
 async def remove_mission_files(mission_to_delete_list, ftps):
+    current_date = datetime.date.today()
     try:
         for item in mission_to_delete_list:
             ftps.delete(item)   # Delete files from ftp server from mission_to_delete_list
