@@ -56,8 +56,9 @@ async def on_ready():
 @client.event
 async def on_message(message):
     global dupeflag
+    global errorflag
     try:
-        if message.channel.id == config["CHANNEL_ID"] and message.attachments:
+        if message.channel.id == config["CHANNEL_ID"] and message.attachments and message.author != client.user:
             for attachment in message.attachments:
                 # Check if the file is a .PBO file
                 if attachment.filename.lower().endswith('.pbo'):
@@ -68,6 +69,8 @@ async def on_message(message):
                         # ☑️
                     elif dupeflag:
                         await message.add_reaction('♻')     # React with a recycle mark for duplicates
+                elif errorflag:
+                    await message.add_reaction('🆘')  # React with a red X for non-PBO files
                 else:
                     botlogger.info(f"Skipped non-PBO file: {attachment.filename}")
                     await message.add_reaction('❌')  # React with a red X for non-PBO files
@@ -99,6 +102,7 @@ async def download_attachment(attachment):
 
 def upload_to_ftp(file_path):
     global dupeflag
+    global errorflag
     try:
         filename = os.path.basename(file_path)
 
@@ -135,6 +139,8 @@ def upload_to_ftp(file_path):
             return dupeflag
     except Exception as e:
         errorlog.error(f"Error in upload_to_ftp: {e}")
+        errorflag = True
+        return errorflag
 
 
 async def index_mission_files(message):
@@ -198,7 +204,8 @@ async def index_mission_files(message):
             eme.add_field(name="Information:",
                           value=f"Amount of files found: {i}"'\n'
                                 f"Size of all files: {mb_size_collection} Mb"'\n'
-                                f"{len(mission_to_delete_list)} are 30 days or older", inline=False)
+                                f"{len(mission_to_delete_list)} are 30 days or older"'\n' 
+                                f"It will save:{mb_deleted}",inline=False)
             await message.channel.send(embed=eme)
             ftps.quit()  # Close Connection
         elif message.content == "!indexMremove" and len(mission_to_delete_list) != 0:   # Index and Delete files older then 30 days
