@@ -70,11 +70,11 @@ async def on_message(message):
                     elif dupeflag:
                         await message.add_reaction('♻')     # React with a recycle mark for duplicates
                 elif errorflag:
-                    await message.add_reaction('🆘')  # React with a red X for non-PBO files
+                    await message.add_reaction('🆘')  # React with a sos for failure in uploading
                 else:
                     botlogger.info(f"Skipped non-PBO file: {attachment.filename}")
                     await message.add_reaction('❌')  # React with a red X for non-PBO files
-        elif "!indexM" in message.content and any(
+        elif message.channel.id == config["CHANNEL_ID"] and "!indexM" in message.content and any(
                 role.name in config["ROLES"] for role in message.author.roles): # Invoke indexing when reading !indexM
             await index_mission_files(message)
     except Exception as e:
