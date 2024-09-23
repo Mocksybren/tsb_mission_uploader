@@ -23,4 +23,9 @@ Logs are spread out over 3 log files
 2. Error Logs
 3. List of PBO's that are added to the server or are duplicates
 
+# other features
+Implemented 2 commands
+1. !indexM        indexes missions and will return if they are older then 30 days and how much space it would save
+2. !indexMremove  indexes missions and will remove mission that are older then 30 days.
+
 Seperation of log files is for an extra feature (callable logs on a website)
